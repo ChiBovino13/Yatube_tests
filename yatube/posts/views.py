@@ -59,7 +59,6 @@ def post_create(request):
     template = 'posts/create_post.html'
     form = PostForm(
         request.POST or None,
-        files=request.FILES or None,
     )
     if form.is_valid():
         post = form.save(commit=False)
@@ -81,7 +80,6 @@ def post_edit(request, post_id):
         return redirect('posts:post_detail', post.pk)
     form = PostForm(
         request.POST or None,
-        files=request.FILES or None,
         instance=post
     )
     if form.is_valid():
