@@ -1,10 +1,7 @@
-from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
-from posts.forms import PostForm
-from posts.models import Group, Post
 
-User = get_user_model()
+from ..models import Group, Post, User
 
 
 class PostCreateFormTests(TestCase):
@@ -19,13 +16,16 @@ class PostCreateFormTests(TestCase):
             slug='test-slug',
             description='Тестовое описание',
         )
+        cls.group_2 = Group.objects.create(
+            title='Тестовый заголовок 2',
+            slug='test-slug-2',
+            description='Тестовое описание 2',
+        )
         cls.post = Post.objects.create(
             text='Тестовый пост',
-            pub_date='05.02.2022',
             author=cls.user,
             group=cls.group,
         )
-        cls.form = PostForm()
 
     def setUp(self):
         self.guest_client = Client()
@@ -37,8 +37,7 @@ class PostCreateFormTests(TestCase):
         posts_count = Post.objects.count()
         form_data = {
             'text': 'Тестовый пост 2',
-            'pub_date': '05.02.2022',
-            'author': 'NoName2',
+            'author': self.user,
             'group': self.group.pk,
         }
         response = self.authorized_client.post(
@@ -54,19 +53,22 @@ class PostCreateFormTests(TestCase):
             )
         )
         self.assertEqual(Post.objects.count(), posts_count + 1)
+        self.assertEqual(Post.objects.first().text, 'Тестовый пост 2')
+        self.assertEqual(Post.objects.first().author, self.user)
+        self.assertEqual(Post.objects.first().group, self.group)
 
     def test_edit_post(self):
         """Валидная форма редактирует запись в Post."""
+        posts_count = Post.objects.count()
         form_data = {
             'text': 'Тестовый пост 3',
-            'pub_date': '05.03.2022',
             'author': 'NoName',
-            'group': self.group.pk,
+            'group': self.group_2.pk,
         }
         response = self.authorized_client.post(
             reverse(
                 'posts:post_edit', kwargs={
-                    'post_id': PostCreateFormTests.post.id
+                    'post_id': self.post.id
                 }
             ),
             data=form_data,
@@ -75,14 +77,19 @@ class PostCreateFormTests(TestCase):
         self.assertRedirects(
             response, reverse(
                 'posts:post_detail', kwargs={
-                    'post_id': PostCreateFormTests.post.id
+                    'post_id': self.post.id
                 }
             )
         )
-        self.assertTrue(
-            Post.objects.filter(
-                id=self.post.id,
-                text='Тестовый пост 3',
-            ).exists()
-        )
         self.assertEqual(self.post.id, PostCreateFormTests.post.id)
+        self.assertEqual(self.post.author, self.user)
+        self.assertEqual(
+            Post.objects.get(
+                id=self.post.id,
+            ).text, 'Тестовый пост 3'
+        )
+        self.assertEqual(
+            Post.objects.get(
+                id=self.post.id,
+            ).group, self.group_2)
+        self.assertEqual(Post.objects.count(), posts_count)
