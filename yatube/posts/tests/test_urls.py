@@ -28,59 +28,87 @@ class PostsURLTests(TestCase):
             text='Тестовый текст 2',
             author=cls.user_2,
         )
-
-    def setUp(self):
-        self.guest_client = Client()
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
+        cls.guest_client = Client()
+        cls.authorized_client = Client()
+        cls.authorized_client.force_login(PostsURLTests.user)
+        cls.urls_quest = {
+            'index_quest': PostsURLTests.guest_client.get('/'),
+            'group_list_quest': PostsURLTests.guest_client.get(
+                '/group/test-slug/'
+            ),
+            'profile_quest': PostsURLTests.guest_client.get(
+                '/profile/test_name/'
+            ),
+            'posts_detail_quest': PostsURLTests.guest_client.get(
+                f'/posts/{PostsURLTests.post.id}/'
+            ),
+            'post_edit_quest': PostsURLTests.guest_client.get(
+                f'/posts/{PostsURLTests.post.id}/edit/'
+            ),
+            'posts_create_quest': PostsURLTests.guest_client.get('/create/'),
+        }
+        cls.urls_authorized = {
+            'index_authorized': PostsURLTests.authorized_client.get('/'),
+            'group_list_authorized': PostsURLTests.authorized_client.get(
+                '/group/test-slug/'
+            ),
+            'profile_authorized': PostsURLTests.authorized_client.get(
+                '/profile/test_name/'
+            ),
+            'posts_detail_authorized': PostsURLTests.authorized_client.get(
+                f'/posts/{PostsURLTests.post.id}/'
+            ),
+            'post_edit_authorized': PostsURLTests.authorized_client.get(
+                f'/posts/{PostsURLTests.post.id}/edit/'
+            ),
+            'posts_create_authorized': PostsURLTests.authorized_client.get(
+                '/create/'
+            ),
+        }
 
     def test_guest_client(self):
         """
         Страницы index, group_list, profile, posts_detail
         доступны любому пользователю.
         """
-        field_guest = {
-            self.guest_client.get('/'): HTTPStatus.OK,
-            self.guest_client.get('/group/test-slug/'): HTTPStatus.OK,
-            self.guest_client.get('/profile/test_name/'): HTTPStatus.OK,
-            self.guest_client.get(f'/posts/{self.post.id}/'): HTTPStatus.OK,
-        }
-        for field, expected_value in field_guest.items():
-            with self.subTest(field=field):
+        urls_guest_list = [
+            self.urls_quest['index_quest'],
+            self.urls_quest['group_list_quest'],
+            self.urls_quest['profile_quest'],
+            self.urls_quest['posts_detail_quest'],
+        ]
+        for value in urls_guest_list:
+            with self.subTest(value=value):
                 self.assertEqual(
-                    field.status_code, expected_value)
+                    value.status_code, HTTPStatus.OK)
 
     def test_authorized_client(self):
         """
         Страницы post_edit, posts_create
         доступны авторизованному пользователю.
         """
-        field_guest = {
-            self.authorized_client.get(
-                f'/posts/{self.post.id}/edit/'
-            ): HTTPStatus.OK,
-            self.authorized_client.get('/create/'): HTTPStatus.OK,
-        }
-        for field, expected_value in field_guest.items():
-            with self.subTest(field=field):
+        urls_authorized_list = [
+            self.urls_authorized['post_edit_authorized'],
+            self.urls_authorized['posts_create_authorized'],
+        ]
+        for value in urls_authorized_list:
+            with self.subTest(value=value):
                 self.assertEqual(
-                    field.status_code, expected_value)
+                    value.status_code, HTTPStatus.OK)
 
     def test_posts_edit_posts_create_redirect_anonymous_on_admin_login(self):
         """
         Страницы post_edit, posts_create
         перенаправят анонимного пользователя.
         """
-        field_guest = {
-            self.guest_client.get(
-                f'/posts/{self.post.id}/edit/'
-            ): HTTPStatus.FOUND,
-            self.guest_client.get('/create/'): HTTPStatus.FOUND,
-        }
-        for field, expected_value in field_guest.items():
-            with self.subTest(field=field):
+        urls_quest_list = [
+            self.urls_quest['post_edit_quest'],
+            self.urls_quest['posts_create_quest'],
+        ]
+        for value in urls_quest_list:
+            with self.subTest(value=value):
                 self.assertEqual(
-                    field.status_code, expected_value)
+                    value.status_code, HTTPStatus.FOUND)
 
     def test_posts_edit_url_redirect_not_author(self):
         """
@@ -90,7 +118,7 @@ class PostsURLTests(TestCase):
         response = self.authorized_client.get(
             f'/posts/{self.post_2.id}/edit/'
         )
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
 
     def test_unexisting_page_url_redirect_anonymous_on_admin_login(self):
         """
@@ -114,3 +142,6 @@ class PostsURLTests(TestCase):
             with self.subTest(url=url):
                 response = self.authorized_client.get(url)
                 self.assertTemplateUsed(response, template)
+
+# Потом удалю этот комментарий, просто хочу сказать, что это все так классно,
+# правки, которые ты мне пишешь.)) Код стал в разы короче! <3

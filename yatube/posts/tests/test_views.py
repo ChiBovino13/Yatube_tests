@@ -6,6 +6,8 @@ from yatube.settings import POSTS_PER_PAGE
 
 from ..models import Group, Post, User
 
+NUMBER_OF_POSTS_FOR_THE_SECOND_PAGE = 3
+
 
 class PostPagesTests(TestCase):
     @classmethod
@@ -62,36 +64,34 @@ class PostPagesTests(TestCase):
                 self.assertTemplateUsed(response, template)
 
     def context_for_all_with_page_obj(self, response):
-        if Post.objects.count() >= 1:
-            first_object = response.context['page_obj'][0]
-            objects = {
-                self.post.text: first_object.text,
-                self.post.id: first_object.id,
-                self.user: first_object.author,
-                self.group.slug: first_object.group.slug,
-                self.group.title: first_object.group.title,
-                self.group.description: first_object.group.description,
-            }
-            for reverse_name, response_name in objects.items():
-                with self.subTest(reverse_name=reverse_name):
-                    self.assertEqual(response_name, reverse_name)
-        else:
-            return AttributeError('На странице нет постов')
+        """Функция для проверки контекста страниц с page_obj в контексте"""
+        first_object = response.context['page_obj'][0]
+        objects = {
+            self.post.text: first_object.text,
+            self.post.id: first_object.id,
+            self.user: first_object.author,
+            self.group.slug: first_object.group.slug,
+            self.group.title: first_object.group.title,
+            self.group.description: first_object.group.description,
+        }
+        for reverse_name, response_name in objects.items():
+            with self.subTest(reverse_name=reverse_name):
+                self.assertEqual(response_name, reverse_name)
+        self.assertTrue(Post.objects.count() >= 1, 'На странице нет постов')
 
     def context_for_all_without_page_obj(self, response):
-        if Post.objects.count() >= 1:
-            objects = {
-                self.post.text: response.context.get('post').text,
-                self.post.id: response.context.get('post').id,
-                self.user: response.context.get('post').author,
-                self.group: response.context.get('post').group,
-                self.post: response.context['post'],
-            }
-            for reverse_name, response_name in objects.items():
-                with self.subTest(reverse_name=reverse_name):
-                    self.assertEqual(response_name, reverse_name)
-        else:
-            return AttributeError('На странице нет постов')
+        """Функция для проверки контекста страниц без page_obj в контексте"""
+        objects = {
+            self.post.text: response.context.get('post').text,
+            self.post.id: response.context.get('post').id,
+            self.user: response.context.get('post').author,
+            self.group: response.context.get('post').group,
+            self.post: response.context['post'],
+        }
+        for reverse_name, response_name in objects.items():
+            with self.subTest(reverse_name=reverse_name):
+                self.assertEqual(response_name, reverse_name)
+        self.assertTrue(Post.objects.count() >= 1, 'На странице нет постов')
 
     def test_index_page_show_correct_context(self):
         """Шаблон index сформирован с правильным контекстом."""
@@ -180,7 +180,9 @@ class PaginatorViewsTest(TestCase):
             text=f'Тестовый текст {post}',
             group=cls.group,
             author=cls.user,)
-            for post in range(13)
+            for post in range(
+                POSTS_PER_PAGE + NUMBER_OF_POSTS_FOR_THE_SECOND_PAGE
+        )
         ]
         Post.objects.bulk_create(cls.post)
 
@@ -210,21 +212,23 @@ class PaginatorViewsTest(TestCase):
                     }
                 )
             ): POSTS_PER_PAGE,
-            self.client.get(reverse('posts:index') + '?page=2'): 3,
+            self.client.get(
+                reverse('posts:index') + '?page=2'
+            ): NUMBER_OF_POSTS_FOR_THE_SECOND_PAGE,
             self.authorized_client.get(
                 reverse(
                     'posts:group_list', kwargs={
                         'slug': self.group.slug
                     }
                 ) + '?page=2'
-            ): 3,
+            ): NUMBER_OF_POSTS_FOR_THE_SECOND_PAGE,
             self.authorized_client.get(
                 reverse(
                     'posts:profile', kwargs={
                         'username': PaginatorViewsTest.user.username
                     }
                 ) + '?page=2'
-            ): 3,
+            ): NUMBER_OF_POSTS_FOR_THE_SECOND_PAGE,
         }
         for response, expected_value in field_paginator.items():
             with self.subTest(response=response):

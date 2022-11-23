@@ -37,7 +37,6 @@ class PostCreateFormTests(TestCase):
         posts_count = Post.objects.count()
         form_data = {
             'text': 'Тестовый пост 2',
-            'author': self.user,
             'group': self.group.pk,
         }
         response = self.authorized_client.post(
@@ -53,16 +52,14 @@ class PostCreateFormTests(TestCase):
             )
         )
         self.assertEqual(Post.objects.count(), posts_count + 1)
-        self.assertEqual(Post.objects.first().text, 'Тестовый пост 2')
-        self.assertEqual(Post.objects.first().author, self.user)
-        self.assertEqual(Post.objects.first().group, self.group)
+        self.assertEqual(Post.objects.first().text, form_data['text'])
+        self.assertEqual(Post.objects.first().group.pk, form_data['group'])
 
     def test_edit_post(self):
         """Валидная форма редактирует запись в Post."""
         posts_count = Post.objects.count()
         form_data = {
             'text': 'Тестовый пост 3',
-            'author': 'NoName',
             'group': self.group_2.pk,
         }
         response = self.authorized_client.post(
@@ -82,14 +79,13 @@ class PostCreateFormTests(TestCase):
             )
         )
         self.assertEqual(self.post.id, PostCreateFormTests.post.id)
-        self.assertEqual(self.post.author, self.user)
         self.assertEqual(
             Post.objects.get(
                 id=self.post.id,
-            ).text, 'Тестовый пост 3'
+            ).text, form_data['text']
         )
         self.assertEqual(
             Post.objects.get(
                 id=self.post.id,
-            ).group, self.group_2)
+            ).group.pk, form_data['group'])
         self.assertEqual(Post.objects.count(), posts_count)
